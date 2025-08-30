@@ -1,0 +1,21 @@
+{
+    "name": "wechat-group-sender",
+    "version": "1.0.0",
+    "description": "企业微信客户群消息定时推送",
+    "main": "src/app.js",
+    "scripts": {
+      "start": "node src/app.js",
+      "dev": "nodemon src/app.js"
+    },
+    "dependencies": {
+      "node-cron": "^3.0.2",
+      "mysql2": "^3.6.0",
+      "axios": "^1.5.0",
+      "dotenv": "^16.3.1",
+      "winston": "^3.10.0"
+    },
+    "devDependencies": {
+      "nodemon": "^3.0.1"
+    }
+  }
+  
