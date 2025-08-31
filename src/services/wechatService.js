@@ -98,7 +98,7 @@ class WechatService {
   async sendMessageToGroup(chatId, content, urlLink) {
     try {
       const accessToken = await this.getAccessToken();
-      const url = `${this.baseUrl}/cgi-bin/externalcontact/add_msg_template`;
+      const url = `${this.baseUrl}/cgi-bin/externalcontact/add_msg_template?access_token=${accessToken}`;
 
       // 组合消息内容
       const messageContent = urlLink
@@ -114,11 +114,7 @@ class WechatService {
         msgtype: "text",
       };
 
-      const response = await axios.post(url, messageData, {
-        params: {
-          access_token: accessToken,
-        },
-      });
+      const response = await axios.post(url, messageData);
 
       if (response.data.errcode !== 0) {
         throw new Error(`发送消息失败: ${response.data.errmsg}`);
