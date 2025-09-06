@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  wechat-sender:
+    build: .
+    container_name: wechat-group-sender
+    restart: unless-stopped
+    environment:
+      # 企业微信配置
+      - CORP_ID=${CORP_ID}
+      - APP_SECRET=${APP_SECRET}
+      - AGENT_ID=${AGENT_ID}
+      
+      # 数据库配置
+      - DB_HOST=${DB_HOST}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      
+      # 应用配置
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-"0 */2 * * *"}
+      - LOG_LEVEL=${LOG_LEVEL:-"info"}
+      
+      # 时区设置
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config
+    networks:
+      - wechat-network
+    depends_on:
+      - mysql
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('Health check passed')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  mysql:
+    image: mysql:8.0
+    container_name: wechat-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+    networks:
+      - wechat-network
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+networks:
+  wechat-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

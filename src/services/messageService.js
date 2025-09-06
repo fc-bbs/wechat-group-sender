@@ -8,7 +8,7 @@ class MessageService {
   async getLatestUnsentMessage() {
     try {
       const sql = `
-        SELECT wx_url_link, post_text_content, post_time
+        SELECT id, wx_url_link, post_text_content, post_time
         FROM post_message 
         WHERE is_sent = 0 OR is_sent IS NULL
         ORDER BY post_time DESC 
@@ -35,9 +35,9 @@ class MessageService {
       logger.info(`找到${rows.length}条未发送的消息`);
 
       return {
-        id: rows.map((rows) => rows.id),
+        id: rows.map((row) => row.id),
         post_text_content: combinedMessage.content,
-        wx_url_link: combinedMessage.links,
+        wx_url_link: null,
         post_time: rows[0].post_time,
         message_count: rows.length,
       };
@@ -67,31 +67,22 @@ class MessageService {
   }
 
   combineMultipleMessages(messages) {
-    let combinedContent = `今日资讯 (${messages.length}条)\n\n`;
-    let combinedLinks = [];
+    const parts = [];
 
-    messages.forEach((message, index) => {
-      const number = index + 1;
-
-      // 提取帖子内容，限制长度避免消息过长
-      let content = message.post_text_content || "";
+    messages.forEach((msg) => {
+      let content = msg.post_text_content || "";
       if (content.length > 20) {
         content = content.substring(0, 20) + "...";
       }
-
-      combinedContent += `${content}\n`;
-
-      // 收集短链接
-      if (message.wx_url_link) {
-        combinedLinks.push(message.wx_url_link);
-      }
+      const link = msg.wx_url_link ? `\n ${msg.wx_url_link}` : "";
+      parts.push(`${content} ${link}`);
     });
 
-    combinedContent += `\n 点击链接查看详情`;
+    const combinedContent = parts.join("\n\n");
 
     return {
       content: combinedContent,
-      links: combinedLinks,
+      links: [],
     };
   }
 
@@ -121,31 +112,6 @@ class MessageService {
     } catch (error) {
       logger.error("记录发送日志失败:", error);
       // 这里不抛出错误，避免影响主流程
-    }
-  }
-
-  /**
-   * 获取发送统计
-   */
-  async getSendStats(days = 7) {
-    try {
-      const sql = `
-        SELECT 
-          DATE(send_time) as date,
-          COUNT(*) as message_count,
-          SUM(total_groups) as total_sends,
-          SUM(success_count) as success_sends
-        FROM send_log 
-        WHERE send_time >= DATE_SUB(NOW(), INTERVAL ? DAY)
-        GROUP BY DATE(send_time)
-        ORDER BY date DESC
-      `;
-
-      const rows = await db.query(sql, [days]);
-      return rows;
-    } catch (error) {
-      logger.error("获取发送统计失败:", error);
-      throw error;
     }
   }
 }

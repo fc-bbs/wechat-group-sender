@@ -17,9 +17,6 @@ class App {
       // 初始化数据库
       await db.init();
 
-      // 测试企业微信连接
-      await this.testWechatConnection();
-
       // 启动定时任务
       this.startCronJob();
 
@@ -30,16 +27,6 @@ class App {
     } catch (error) {
       logger.error("应用启动失败:", error);
       process.exit(1);
-    }
-  }
-
-  async testWechatConnection() {
-    try {
-      await wechatService.getAccessToken();
-      logger.info("企业微信连接测试成功");
-    } catch (error) {
-      logger.error("企业微信连接测试失败:", error);
-      throw error;
     }
   }
 
@@ -100,7 +87,7 @@ class App {
 
   setupGracefulShutdown() {
     const shutdown = async (signal) => {
-      logger.info(`收到${signal}信号，开始优雅关闭...`);
+      logger.info(`收到${signal}信号，开始关闭...`);
 
       try {
         // 等待当前任务完成

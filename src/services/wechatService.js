@@ -5,40 +5,9 @@ const logger = require("../utils/logger");
 class WechatService {
   constructor() {
     this.baseUrl = config.wechat.baseUrl;
-    this.corpId = config.wechat.corpId;
-    this.appSecret = config.wechat.appSecret;
-    this.agentId = config.wechat.agentId;
-    this.accessToken = null;
-    this.tokenExpireTime = 0;
-  }
-
-  /**
-   * 获取访问令牌
-   */
-  async getAccessToken() {
-    try {
-      // 如果token未过期，直接返回
-      if (this.accessToken && Date.now() < this.tokenExpireTime) {
-        return this.accessToken;
-      }
-
-      const url = `${this.baseUrl}/cgi-bin/gettoken?corpid=${this.corpId}&corpsecret=${this.appSecret}`;
-      const response = await axios.get(url);
-      if (response.data.errcode !== 0) {
-        throw new Error(`获取access_token失败: ${response.data.errmsg}`);
-      }
-
-      this.accessToken = response.data.access_token;
-      // 提前5分钟过期
-      this.tokenExpireTime =
-        Date.now() + (response.data.expires_in - 300) * 1000;
-
-      logger.info("access_token获取成功");
-      return this.accessToken;
-    } catch (error) {
-      logger.error("获取access_token失败:", error);
-      throw error;
-    }
+    this.app_key = config.wechat.appKey;
+    this.app_secret = config.wechat.appSecret;
+    this.guid = config.wechat.guid;
   }
 
   /**
@@ -46,23 +15,30 @@ class WechatService {
    */
   async getGroupChatList() {
     try {
-      const accessToken = await this.getAccessToken();
-      const url = `${this.baseUrl}/cgi-bin/externalcontact/groupchat/list?access_token=${accessToken}`;
+      const url = `${this.baseUrl}`;
 
       const response = await axios.post(url, {
-        status_filter: 0,
-        owner_filter: {
-          userid_list: [], // 空数组表示获取所有群主的群
+        app_key: `${this.app_key}`,
+        app_secret: `${this.app_secret}`,
+        path: "/room/get_room_list",
+        data: {
+          guid: `${this.guid}`,
+          start_index: 0,
+          limit: 10,
         },
-        limit: 1000,
       });
 
-      if (response.data.errcode !== 0) {
-        throw new Error(`获取群聊列表失败: ${response.data.errmsg}`);
+      if (response.data.error_code !== 0) {
+        throw new Error(`获取群聊列表失败: ${response.data.error_message}`);
       }
 
-      logger.info(`获取到${response.data.group_chat_list.length}个客户群`);
-      return response.data.group_chat_list;
+      const roomIds = response.data.data.roomdata.datas.map(
+        (room) => `R:${room.roomid}`
+      );
+
+      logger.info(`获取到${response.data.data.total}个客户群`);
+
+      return roomIds;
     } catch (error) {
       logger.error("获取客户群列表失败:", error);
       throw error;
@@ -70,35 +46,11 @@ class WechatService {
   }
 
   /**
-   * 获取群聊详情
-   */
-  async getGroupChatDetail(chatId) {
-    try {
-      const accessToken = await this.getAccessToken();
-      const url = `${this.baseUrl}/cgi-bin/externalcontact/groupchat/get?access_token=${accessToken}`;
-
-      const response = await axios.post(url, {
-        chat_id: chatId,
-      });
-
-      if (response.data.errcode !== 0) {
-        throw new Error(`获取群聊详情失败: ${response.data.errmsg}`);
-      }
-
-      return response.data.group_chat;
-    } catch (error) {
-      logger.error(`获取群聊详情失败 (chatId: ${chatId}):`, error);
-      throw error;
-    }
-  }
-
-  /**
    * 发送消息到客户群
    */
-  async sendMessageToGroup(chatId, content, urlLink) {
+  async sendMessageToGroup(conversationId, content, urlLink) {
     try {
-      const accessToken = await this.getAccessToken();
-      const url = `${this.baseUrl}/cgi-bin/externalcontact/add_msg_template?access_token=${accessToken}`;
+      const url = `${this.baseUrl}`;
 
       // 组合消息内容
       const messageContent = urlLink
@@ -106,24 +58,26 @@ class WechatService {
         : content;
 
       const messageData = {
-        chat_type: "group",
-        external_userid: [chatId],
-        text: {
+        app_key: this.app_key,
+        app_secret: this.app_secret,
+        path: "/msg/send_text",
+        data: {
+          guid: this.guid,
+          conversation_id: conversationId,
           content: messageContent,
         },
-        msgtype: "text",
       };
 
       const response = await axios.post(url, messageData);
 
-      if (response.data.errcode !== 0) {
-        throw new Error(`发送消息失败: ${response.data.errmsg}`);
+      if (response.data.error_code !== 0) {
+        throw new Error(`发送消息失败: ${response.data.error_message}`);
       }
 
-      logger.info(`消息发送成功 (chatId: ${chatId})`);
+      logger.info(`消息发送成功 (conversationId: ${conversationId})`);
       return response.data;
     } catch (error) {
-      logger.error(`发送消息失败 (chatId: ${chatId}):`, error);
+      logger.error(`发送消息失败 (conversationId: ${conversationId}):`, error);
       throw error;
     }
   }
@@ -133,10 +87,10 @@ class WechatService {
    */
   async broadcastMessage(content, urlLink) {
     try {
-      const groupList = await this.getGroupChatList();
+      const roomIds = await this.getGroupChatList();
       const results = [];
 
-      for (const group of groupList) {
+      for (const conversationId of roomIds) {
         try {
           // 添加延迟避免频率限制
           if (results.length > 0) {
@@ -144,19 +98,19 @@ class WechatService {
           }
 
           const result = await this.sendMessageToGroup(
-            group.chat_id,
+            conversationId,
             content,
             urlLink
           );
 
           results.push({
-            chatId: group.chat_id,
+            conversationId: conversationId,
             success: true,
             result: result,
           });
         } catch (error) {
           results.push({
-            chatId: group.chat_id,
+            conversationId: conversationId,
             success: false,
             error: error.message,
           });

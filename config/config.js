@@ -2,10 +2,10 @@ require("dotenv").config();
 
 module.exports = {
   wechat: {
-    corpId: process.env.CORP_ID,
+    appKey: process.env.APP_KEY,
     appSecret: process.env.APP_SECRET,
-    agentId: process.env.AGENT_ID,
-    baseUrl: "https://qyapi.weixin.qq.com",
+    guid: process.env.GUID,
+    baseUrl: "https://chat-api.juhebot.com/open/GuidRequest",
   },
   database: {
     host: process.env.DB_HOST,
