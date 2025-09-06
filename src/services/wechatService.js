@@ -48,14 +48,9 @@ class WechatService {
   /**
    * 发送消息到客户群
    */
-  async sendMessageToGroup(conversationId, content, urlLink) {
+  async sendMessageToGroup(conversationId, content) {
     try {
       const url = `${this.baseUrl}`;
-
-      // 组合消息内容
-      const messageContent = urlLink
-        ? `${content}\n\n🔗 查看详情：${urlLink}`
-        : content;
 
       const messageData = {
         app_key: this.app_key,
@@ -64,7 +59,7 @@ class WechatService {
         data: {
           guid: this.guid,
           conversation_id: conversationId,
-          content: messageContent,
+          content: content,
         },
       };
 
@@ -85,7 +80,7 @@ class WechatService {
   /**
    * 批量发送消息到所有客户群
    */
-  async broadcastMessage(content, urlLink) {
+  async broadcastMessage(content) {
     try {
       const roomIds = await this.getGroupChatList();
       const results = [];
@@ -97,11 +92,7 @@ class WechatService {
             await this.sleep(1000);
           }
 
-          const result = await this.sendMessageToGroup(
-            conversationId,
-            content,
-            urlLink
-          );
+          const result = await this.sendMessageToGroup(conversationId, content);
 
           results.push({
             conversationId: conversationId,

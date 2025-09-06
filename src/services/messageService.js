@@ -37,7 +37,6 @@ class MessageService {
       return {
         id: rows.map((row) => row.id),
         post_text_content: combinedMessage.content,
-        wx_url_link: null,
         post_time: rows[0].post_time,
         message_count: rows.length,
       };
@@ -58,8 +57,10 @@ class MessageService {
         WHERE id = ?
       `;
 
-      await db.query(sql, [messageId]);
-      logger.info(`消息已标记为已发送: ID=${messageId}`);
+      for (const id of messageId) {
+        await db.query(sql, [id]);
+        logger.info(`消息已标记为已发送: ID=${messageId}`);
+      }
     } catch (error) {
       logger.error(`标记消息失败 (ID: ${messageId}):`, error);
       throw error;
@@ -80,8 +81,12 @@ class MessageService {
 
     const combinedContent = parts.join("\n\n");
 
+    const finalContent =
+      combinedContent +
+      "\n\n一键发帖同步至1w+温商社区\n#小程序://风车地图Space/6zTP2WLCira9CAt";
+
     return {
-      content: combinedContent,
+      content: finalContent,
       links: [],
     };
   }

@@ -49,8 +49,8 @@ class App {
       }
     });
 
-    // 立即执行一次（可选）
-    // this.executeTask();
+    // 立即执行一次
+    this.executeTask();
   }
 
   async executeTask() {
@@ -59,6 +59,7 @@ class App {
     try {
       // 1. 获取最新未发送的消息
       const message = await messageService.getLatestUnsentMessage();
+      console.log(message);
 
       if (!message) {
         logger.info("没有需要发送的消息");
@@ -67,8 +68,7 @@ class App {
 
       // 2. 发送消息到所有客户群
       const results = await wechatService.broadcastMessage(
-        message.post_text_content,
-        message.wx_url_link
+        message.post_text_content
       );
 
       // 3. 标记消息为已发送
