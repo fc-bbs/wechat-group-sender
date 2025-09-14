@@ -8,9 +8,9 @@ class MessageService {
   async getLatestUnsentMessage() {
     try {
       const sql = `
-        SELECT id, wx_url_link, post_text_content, post_time
+        SELECT id, wx_url_link, post_text_content, post_time, state
         FROM post_message 
-        WHERE is_sent = 0 OR is_sent IS NULL
+        WHERE (is_sent = 0 OR is_sent IS NULL) AND state = 2
         ORDER BY post_time DESC 
         LIMIT 6
       `;
@@ -22,11 +22,9 @@ class MessageService {
         return null;
       }
 
-      if (rows.length === 1) {
-        logger.info(
-          `找到一条未发送的消息: ${rows[0].post_text_content} + ${rows[0].wx_url_link}`
-        );
-        return rows[0];
+      if (rows.length < 3) {
+        logger.info(`未达到3条（当前 ${rows.length} 条），跳过发送`);
+        return null;
       }
 
       // 拼接多条消息

@@ -16,7 +16,7 @@ module.exports = {
     timezone: "+08:00",
   },
   app: {
-    cronSchedule: process.env.CRON_SCHEDULE || "0 */2 * * * *",
+    cronSchedule: process.env.CRON_SCHEDULE || "0 */30 * * * *",
     logLevel: process.env.LOG_LEVEL || "info",
   },
 };
